@@ -98,6 +98,12 @@ public:
     return result;
   }
 
+  void reset(const VecXd& x_init, const MatXd& P_init)
+  {
+    m_x_filtered = x_init;
+    m_P_filtered = P_init;
+  }
+
 private:
   VecXd m_x_filtered;
   MatXd m_P_filtered;

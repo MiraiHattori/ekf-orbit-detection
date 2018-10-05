@@ -65,8 +65,19 @@ int main()
   {
     // {{{ simulator calc start
     Eigen::VectorXd pos3d(3);
-    pos3d << sim_x0 + sim_p * sim_v_w * sim_t, sim_y0 + sim_q * sim_v_w * sim_t,
-        sim_z0 + sim_v_z * sim_t + GRAVITY[2] * sim_t * sim_t / 2.0;
+    double throw_start_t = 1.0;
+    // しばらく投げない
+    if (sim_t < throw_start_t)
+    {
+      pos3d << sim_x0, sim_y0, sim_z0;
+    }
+    else
+    {
+      pos3d << sim_x0 + sim_p * sim_v_w * (sim_t - throw_start_t),
+          sim_y0 + sim_q * sim_v_w * (sim_t - throw_start_t),
+          sim_z0 + sim_v_z * (sim_t - throw_start_t) +
+              GRAVITY[2] * (sim_t - throw_start_t) * (sim_t - throw_start_t) / 2.0;
+    }
 
     std::cout << "sim_time_and_pos: " << sim_t << " " << pos3d[0] << " " << pos3d[1] << " " << pos3d[2] << std::endl;
 
