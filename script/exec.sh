@@ -12,6 +12,7 @@ cat log | grep measure > measure.log
 cat log | grep estimated > estimated.log
 
 gnuplot -e "
+    set view equal xyz;
     splot \"measure.log\" using 2:3:4 title \"measured point\",
           \"pos.log\" using 3:4:5 title \"real point\",
           \"estimated.log\" using 2:3:4 title \"estimated point\",
