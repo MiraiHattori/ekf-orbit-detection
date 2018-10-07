@@ -2,7 +2,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/LU>
-// #include <iostream>
+#include <iostream>
 #include <utility>
 
 namespace Filter
@@ -22,7 +22,8 @@ public:
   using VecXd = Eigen::VectorXd;
   using MatXd = Eigen::MatrixXd;
   // @brief初期状態と分散共分散行列の初期値
-  explicit EKF(const VecXd& x_init, const MatXd& P_init) : m_x_filtered(x_init), m_P_filtered(P_init)
+  explicit EKF(const VecXd& x_init, const MatXd& P_init)
+    : m_x_filtered(x_init), m_P_filtered(P_init)
   {
   }
 
@@ -89,8 +90,10 @@ public:
     std::cout << m_x_filtered << std::endl;
     std::cout << "size" << std::endl;
     std::cout << size << std::endl;
+    */
     std::cout << "m_P_filtered" << std::endl;
     std::cout << m_P_filtered << std::endl;
+    /*
     */
     std::pair<VecXd, MatXd> result;
     result.first = m_x_filtered;

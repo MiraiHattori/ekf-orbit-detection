@@ -1,6 +1,11 @@
 #include <iostream>
 #include <GL/glut.h>
+#include <GL/freeglut.h>
 #include <memory>
+#include <unistd.h>
+#include <thread>
+#include <mutex>
+#include <cmath>
 
 class Window
 {
@@ -22,13 +27,16 @@ public:
   {
     glutDisplayFunc(displayAll);
     glutReshapeFunc(reshapeFunc);
-    glutMotionFunc(dragFunc);
-    glutSpecialFunc(specialKeyboardFunc);
-    glutMouseFunc(mouseFunc);
+    // glutMotionFunc(dragFunc);
+    glutKeyboardFunc(normalKeyboardFunc);
+    // glutSpecialFunc(specialKeyboardFunc);
+    // glutMouseFunc(mouseFunc);
+    glutIdleFunc(refreshFunc);
   }
   // コールバック開始
   static void start()
   {
+    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
     glutMainLoop();
   }
   // 表示
@@ -41,8 +49,17 @@ public:
         0.0, 0.0, 0.0,
         0.0, 1.0, 0.0);
     displayGround();
+    double x, y, z;
+    {
+      std::lock_guard<std::mutex> lock(m_mtx);
+      x = m_ball_x;
+      y = m_ball_y;
+      z = m_ball_z;
+    }
+    glTranslatef(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
     glColor4f(ball_r, ball_g, ball_b, ball_a);
     glutSolidCube(100);
+    glTranslatef(static_cast<float>(-x), static_cast<float>(-y), static_cast<float>(-z));
     glutSwapBuffers();  // double buffering
   }
   // 大地の描画
@@ -77,6 +94,15 @@ public:
   {
     std::cerr << "drag " << x << " " << y << std::endl;
   }
+  // 通常キー押下時
+  static void normalKeyboardFunc(unsigned char key, int x, int y)
+  {
+    if (key == 'q')
+    {
+      std::cerr << "keyboard " << key << " " << x << " " << y << std::endl;
+      glutLeaveMainLoop();
+    }
+  }
   // 特殊キー押下時
   static void specialKeyboardFunc(int key, int x, int y)
   {
@@ -108,7 +134,14 @@ public:
   static void refreshFunc()
   {
     glutPostRedisplay();
-    //std::cout << "refresh" << std::endl;
+  }
+
+  static void setBallPosition(const double& x, const double& y, const double& z)
+  {
+    std::lock_guard<std::mutex> lock(m_mtx);
+    m_ball_x = x;
+    m_ball_y = y;
+    m_ball_z = z;
   }
 
 private:
@@ -133,14 +166,42 @@ private:
   static constexpr float ball_b = 0.2f;
   static constexpr float ball_a = 1.0f;
 
+  static std::mutex m_mtx;
+
+  static double m_ball_x;
+  static double m_ball_y;
+  static double m_ball_z;
+
   const char* window_title = "sim";
 };
+
+double Window::m_ball_x = 0.0;
+double Window::m_ball_y = 0.0;
+double Window::m_ball_z = 0.0;
+std::mutex Window::m_mtx;
+
+void simulate(const std::unique_ptr<Window>& window)
+{
+  double t = 0.0;
+  while (true)
+  {
+    window->setBallPosition(1000.0 * std::cos(t), 1000.0 * std::sin(t), 100.0);
+    std::cout << 1000.0 * std::cos(t) << " " << 1000.0 * std::sin(t) << " " << 100.0 << std::endl;
+    usleep(10000);
+    t += 0.01;
+  }
+}
 
 int main(int argc, char** argv)
 {
   std::unique_ptr<Window> window = nullptr;
   window.reset(new Window(&argc, argv));
+
+  std::thread thread_simulation([&] { simulate(window); });
+  thread_simulation.detach();
+
   window->init();
   window->start();
+
   return 0;
 }

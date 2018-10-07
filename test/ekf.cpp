@@ -17,9 +17,9 @@ int main()
   P_init << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.1, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.1, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 2.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 2.0;
+            0.0, 0.0, 0.0, 1000.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 1000.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 2000.0;
   // clang-format on
   Filter::EKF ekf(x_init, P_init);
 
@@ -65,7 +65,7 @@ int main()
   {
     // {{{ simulator calc start
     Eigen::VectorXd pos3d(3);
-    double throw_start_t = 1.0;
+    double throw_start_t = 0.0;
     // しばらく投げない
     if (sim_t < throw_start_t)
     {
