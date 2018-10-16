@@ -102,7 +102,6 @@ public:
     glutSolidCylinder(100.0, 10.0, 10, 10);
     glTranslated(-x_ - vx_ * 2.0 * vz_ / (9.80665 * 1000.0), -y_ - vy_ * 2.0 * vz_ / (9.80665 * 1000.0), 0.0);
 
-    /*
     // ストライクゾーンの描画
     glColor4d(0.2, 0.2, 0.2, 1.0);
     glTranslated(0.0, 0.0, 1000.0);
@@ -110,9 +109,8 @@ public:
     glutSolidCylinder(10000.0, 10.0, 10, 10);
     glRotated(-90.0, 0.0, 1.0, 0.0);
     glTranslated(0.0, 0.0, -1000.0);
-    */
 
-    displayMarker();
+    displayLine();
     glutSwapBuffers();  // double buffering
   }
   // 大地の描画
@@ -133,8 +131,8 @@ public:
     glEnd();
   }
 
-  // 放物線や落下点や通過点の描画
-  static void displayMarker()
+  // 放物線の描画
+  static void displayLine()
   {
     double x0, y0, z0, vx0, vy0, vz0;
     {
@@ -153,7 +151,6 @@ public:
       double x = x0 + vx0 * t;
       double y = y0 + vy0 * t;
       double z = z0 + vz0 * t + GRAVITY[2] * t * t / 2.0;
-      // x=0にある垂直な壁との推定通過点
       if (-30.0 < x and x < 30.0)
       {
         glTranslated(10.0, y, z);
@@ -162,7 +159,6 @@ public:
         glRotated(-90.0, 0.0, 1.0, 0.0);
         glTranslated(-10.0, -y, -z);
       }
-      // z=0にある地面への落下点
       else if (-30.0 < z and z < 30.0)
       {
         glTranslated(x, y, 0);
@@ -176,26 +172,6 @@ public:
         glTranslated(-x, -y, -z);
       }
     }
-    // x=0にある垂直な壁とボールの通過点
-    static bool init = false;
-    static double x, y, z, vx, vy, vz;
-    if (not init)
-    {
-      std::lock_guard<std::mutex> lock(m_mtx);
-      x = m_ball_x;
-      y = m_ball_y;
-      z = m_ball_z;
-      vx = m_ball_vx;
-      vy = m_ball_vy;
-      vz = m_ball_vz;
-      init = true;
-    }
-    static double t = -x / vx;
-    glTranslated(0, y + vy * t, z + vz * t + GRAVITY[2] * t * t / 2.0);
-    glRotated(90.0, 0.0, 1.0, 0.0);
-    glutSolidCylinder(100.0, 10.0, 10, 10);
-    glRotated(-90.0, 0.0, 1.0, 0.0);
-    glTranslated(0, -y - vy * t, -z - vz * t - GRAVITY[2] * t * t / 2.0);
   }
 
   // 画面サイズ変更時
@@ -344,7 +320,7 @@ void simulate(const std::unique_ptr<Window>& window)
 {
   Eigen::VectorXd x_init(6);
   // 雑な値を入れておく
-  x_init << 6.5, 1.0, 0.0, -8.0, -6.0, 3.0;
+  x_init << 4.5, 1.0, 0.0, -8.0, -6.0, 4.0;
   // 雑な値を入れておいたので増やしておく
   Eigen::MatrixXd P_init(6, 6);
   // clang-format off
@@ -383,11 +359,11 @@ void simulate(const std::unique_ptr<Window>& window)
            0.000000,    0.000000,   1.000000,    0.000000;
   // clang-format on
 
-  double sim_x0 = 6.0;
+  double sim_x0 = 5.0;
   double sim_y0 = 1.0;
   double sim_z0 = 0.0;
   double sim_v_w = -10.0;
-  double sim_v_z = 3.3;
+  double sim_v_z = 3.5;
   double sim_p = 0.9;                           // 0.0 <= p <= 1.0である必要がある
   double sim_q = std::sqrt(1 - sim_p * sim_p);  // p^2 + q^2 = 1
   double sim_t = 0.0;
