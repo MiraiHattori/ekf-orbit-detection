@@ -26,6 +26,18 @@ public:
     : m_x_filtered(x_init), m_P_filtered(P_init)
   {
   }
+  explicit EKF(const EKF&) = default;
+
+  /*
+   * @brief 初期状態と分散共分散行列をstd::pairで返す関数
+   */
+  std::pair<VecXd, MatXd> state() const
+  {
+    std::pair<VecXd, MatXd> result;
+    result.first = m_x_filtered;
+    result.second = m_P_filtered;
+    return result;
+  }
 
   /*
    * @brief 現在状態を推定し、現在の状態の分散共分散行列を求める

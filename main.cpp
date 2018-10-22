@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <GL/glut.h>
@@ -343,7 +344,7 @@ std::mutex Window::m_mtx;
 void simulate(const std::unique_ptr<Window>& window)
 {
   Eigen::VectorXd x_init(6);
-  // 雑な値を入れておく
+  // 雑な値を入れておく(初回見えた時にキャリブレーションする予定)
   x_init << 6.5, 1.0, 0.0, -8.0, -6.0, 3.0;
   // 雑な値を入れておいたので増やしておく
   Eigen::MatrixXd P_init(6, 6);
@@ -355,7 +356,7 @@ void simulate(const std::unique_ptr<Window>& window)
             0.0, 0.0, 0.0, 0.0, 2.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 20.0;
   // clang-format on
-  Filter::EKF ekf(x_init, P_init);
+  Filter::EKF ekf{ x_init, P_init };
   // 放物線を描くボール
   // 重力は適当
   const Eigen::VectorXd GRAVITY((Eigen::VectorXd(3) << 0, 0, -9.80665).finished());
@@ -392,6 +393,10 @@ void simulate(const std::unique_ptr<Window>& window)
   double sim_q = std::sqrt(1 - sim_p * sim_p);  // p^2 + q^2 = 1
   double sim_t = 0.0;
 
+  // Eigen::MatrixXdとして6次元(x, y, z, vx, vy, vz)をもつ．初期値探索の初期化用なので最大点群保持数はユーザープログラムで100個程度にするつもり
+  std::vector<Eigen::MatrixXd> points_for_init{};
+  bool ekf_initialized_flag = false;
+
   while (true)
   {
     // {{{ simulator calc start
@@ -421,20 +426,12 @@ void simulate(const std::unique_ptr<Window>& window)
     Eigen::VectorXd tmp_l = PL * homo_pos4d;
     // 左右ステレオカメラ上のボールの画像重心ピクセル値
     Eigen::VectorXd pixel_l(2);
-    /*
-    pixel_l << tmp_l[0] / tmp_l[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
-        tmp_l[1] / tmp_l[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
-    */
-    pixel_l << tmp_l[0] / tmp_l[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
+    pixel_l << tmp_l[0] / tmp_l[2] + Math::normalRand(0.0, 2.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
         tmp_l[1] / tmp_l[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
     Eigen::VectorXd tmp_r = PR * homo_pos4d;
     Eigen::VectorXd pixel_r(2);
-    /*
-    pixel_r << tmp_r[0] / tmp_r[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
-        tmp_r[1] / tmp_r[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
-    */
-    pixel_r << tmp_r[0] / tmp_r[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
-        tmp_r[1] / tmp_r[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
+    pixel_r << tmp_r[0] / tmp_r[2] + Math::normalRand(0.0, 2.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
+        tmp_r[1] / tmp_r[2] + Math::normalRand(0.0, 2.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
     if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] < 1280.0 and
         0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
     {
@@ -442,6 +439,7 @@ void simulate(const std::unique_ptr<Window>& window)
     }
     // }}} simulator calc end
     // {{{ user program start
+    // {{{ raw point
     float pd[12] = {
       static_cast<float>(PL(0, 0)), static_cast<float>(PL(0, 1)), static_cast<float>(PL(0, 2)),
       static_cast<float>(PL(0, 3)), static_cast<float>(PL(1, 0)), static_cast<float>(PL(1, 1)),
@@ -472,6 +470,7 @@ void simulate(const std::unique_ptr<Window>& window)
     {
       std::cout << "measured: " << point[2] << " " << -point[0] << " " << -point[1] << std::endl;
     }
+    // }}}
 
     // 状態xはカメラリンク座標系でのボールの位置と速度を6次元並べたもの
     Eigen::MatrixXd F = Eigen::MatrixXd::Identity(6, 6);
@@ -513,7 +512,6 @@ void simulate(const std::unique_ptr<Window>& window)
     Eigen::MatrixXd R = 10.0 * Eigen::MatrixXd::Identity(4, 4);
 
     std::pair<Eigen::VectorXd, Eigen::MatrixXd> value = ekf.update(f, F, G, Q, u, z, h, dh, R);
-
     if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] <= 1024.0 and
         0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
     {
