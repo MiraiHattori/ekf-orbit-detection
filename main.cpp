@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 
+#include <Eigen/Geometry>
 #include <opencv2/calib3d/calib3d.hpp>
 #include "filter/ekf.hpp"
 #include "math/random.hpp"
@@ -417,8 +418,16 @@ void simulate(const std::unique_ptr<Window>& window)
     std::cout << "sim_time_and_pos: " << sim_t << " " << pos3d[0] << " " << pos3d[1] << " " << pos3d[2] << std::endl;
     window->setRealBallState(pos3d[0], pos3d[1], pos3d[2], vel3d[0], vel3d[1], vel3d[2]);
 
+    // mechanical parameter
+    // TODO use tf2::Quaternion
+    Eigen::Quaterniond q_camera(0.9987503, 0.0, 0.0499792, 0.0);  // w, x, y, z
+    Eigen::Quaterniond q_camera_inv = q_camera.inverse();
+
+    Eigen::Vector3d q_pos(pos3d[0], pos3d[1], pos3d[2]);  // カメラの姿勢を考慮していないxyz座標, 絶対座標系
+    Eigen::Vector3d q_pos_rot = q_camera_inv * q_pos;     // カメラの姿勢を考慮したxyz座標, 絶対座標系
+
     Eigen::VectorXd homo_pos4d(4);  // 同次座標系, かつ光学座標系(奥がz)
-    homo_pos4d << -pos3d[1], -pos3d[2], pos3d[0], 1.0;
+    homo_pos4d << -q_pos_rot[1], -q_pos_rot[2], q_pos_rot[0], 1.0;
     Eigen::VectorXd tmp_l = PL * homo_pos4d;
     // 左右ステレオカメラ上のボールの画像重心ピクセル値
     Eigen::VectorXd pixel_l(2);

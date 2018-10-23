@@ -102,10 +102,8 @@ public:
     std::cout << m_x_filtered << std::endl;
     std::cout << "size" << std::endl;
     std::cout << size << std::endl;
-    */
     std::cout << "m_P_filtered" << std::endl;
     std::cout << m_P_filtered << std::endl;
-    /*
     */
     std::pair<VecXd, MatXd> result;
     result.first = m_x_filtered;
