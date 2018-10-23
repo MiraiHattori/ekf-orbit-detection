@@ -489,19 +489,21 @@ void simulate(const std::unique_ptr<Window>& window)
     u.block(3, 0, 3, 1) = GRAVITY * delta_t;
     Eigen::VectorXd z(4);
     z << pixel_l[0], pixel_l[1], pixel_r[0], pixel_r[1];
-    std::function<Eigen::VectorXd(Eigen::VectorXd)> h = [PL, PR](Eigen::VectorXd x) {
+    std::function<Eigen::VectorXd(Eigen::VectorXd)> h = [PL, PR, q_camera_inv](Eigen::VectorXd x) {
       Eigen::VectorXd z_(4);
-      double X = x[0];
-      double Y = x[1];
-      double Z = x[2];
+      Eigen::VectorXd x_ = q_camera_inv * x;
+      double X = x_[0];
+      double Y = x_[1];
+      double Z = x_[2];
       z_ << -PL(0, 0) * Y / X + PL(0, 2), -PL(1, 1) * Z / X + PL(1, 2), -PR(0, 0) * Y / X + PR(0, 2) + PR(0, 3) / X,
           -PR(1, 1) * Z / X + PR(1, 2);
       return z_;
     };
-    std::function<Eigen::MatrixXd(Eigen::VectorXd)> dh = [PL, PR](Eigen::VectorXd x_filtered_pre) {
-      double X = x_filtered_pre[0];
-      double Y = x_filtered_pre[1];
-      double Z = x_filtered_pre[2];
+    std::function<Eigen::MatrixXd(Eigen::VectorXd)> dh = [PL, PR, q_camera_inv](Eigen::VectorXd x_filtered_pre) {
+      Eigen::VectorXd x_ = q_camera_inv * x_filtered_pre;
+      double X = x_[0];
+      double Y = x_[1];
+      double Z = x_[2];
       Eigen::MatrixXd H = Eigen::MatrixXd::Zero(4, 6);
       H(0, 0) = PL(0, 0) * Y / (X * X);
       H(0, 1) = -PL(0, 0) / X;
