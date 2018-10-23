@@ -393,10 +393,6 @@ void simulate(const std::unique_ptr<Window>& window)
   double sim_q = std::sqrt(1 - sim_p * sim_p);  // p^2 + q^2 = 1
   double sim_t = 0.0;
 
-  // Eigen::MatrixXdとして6次元(x, y, z, vx, vy, vz)をもつ．初期値探索の初期化用なので最大点群保持数はユーザープログラムで100個程度にするつもり
-  std::vector<Eigen::MatrixXd> points_for_init{};
-  bool ekf_initialized_flag = false;
-
   while (true)
   {
     // {{{ simulator calc start
