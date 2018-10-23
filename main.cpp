@@ -420,7 +420,7 @@ void simulate(const std::unique_ptr<Window>& window)
 
     // mechanical parameter
     // TODO use tf2::Quaternion
-    Eigen::Quaterniond q_camera(0.9987503, 0.0, 0.0499792, 0.0);  // w, x, y, z
+    Eigen::Quaterniond q_camera(0.9987503, 0.0, -0.0499792, 0.0);  // w, x, y, z
     Eigen::Quaterniond q_camera_inv = q_camera.inverse();
 
     Eigen::Vector3d q_pos(pos3d[0], pos3d[1], pos3d[2]);  // カメラの姿勢を考慮していないxyz座標, 絶対座標系
@@ -466,14 +466,18 @@ void simulate(const std::unique_ptr<Window>& window)
     float resultd[4] = { 0.0, 0.0, 0.0, 0.0 };
     cv::Mat result(cv::Size(1, 4), CV_32F, resultd);
     cv::triangulatePoints(p, rp, xy, rxy, result);
+    Eigen::VectorXd point_opt(3);
     Eigen::VectorXd point(3);
-    point << result.at<float>(0, 0) / result.at<float>(3, 0), result.at<float>(1, 0) / result.at<float>(3, 0),
+    Eigen::VectorXd point_rot(3);
+    point_opt << result.at<float>(0, 0) / result.at<float>(3, 0), result.at<float>(1, 0) / result.at<float>(3, 0),
         result.at<float>(2, 0) / result.at<float>(3, 0);
+    point << point_opt[2], -point_opt[0], -point_opt[1];
+    point_rot = q_camera * point;
 
     if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] < 1280.0 and
         0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
     {
-      std::cout << "measured: " << point[2] << " " << -point[0] << " " << -point[1] << std::endl;
+      std::cout << "measured: " << point_rot[0] << " " << point_rot[1] << " " << point_rot[2] << std::endl;
     }
     // }}}
 
