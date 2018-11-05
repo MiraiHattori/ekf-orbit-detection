@@ -59,6 +59,8 @@ public:
                                  const VecXd& u, const VecXd& z, std::function<VecXd(VecXd)> h,
                                  std::function<MatXd(VecXd)> dh, const MatXd& R)
   {
+    std::cout << "m_x_filtered" << std::endl;
+    std::cout << m_x_filtered << std::endl;
     // 予測段
     VecXd x_pred = f(m_x_filtered) + u;
     MatXd P_pred = F * m_P_filtered * F.transpose() + G * Q * G.transpose();
@@ -70,7 +72,6 @@ public:
     m_x_filtered = x_pred + K * e;                   // 現在の状態予測
     Eigen::Index size = (K * H).cols();
     m_P_filtered = (MatXd::Identity(size, size) - K * H) * P_pred;  // 現在の分散共分散行列
-    /*
     std::cout << "ekf update: " << std::endl;
     std::cout << "F" << std::endl;
     std::cout << F << std::endl;
@@ -104,7 +105,6 @@ public:
     std::cout << size << std::endl;
     std::cout << "m_P_filtered" << std::endl;
     std::cout << m_P_filtered << std::endl;
-    */
     std::pair<VecXd, MatXd> result;
     result.first = m_x_filtered;
     result.second = m_P_filtered;

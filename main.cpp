@@ -344,20 +344,6 @@ std::mutex Window::m_mtx;
 // {{{ simulation thread
 void simulate(const std::unique_ptr<Window>& window)
 {
-  Eigen::VectorXd x_init(6);
-  // 雑な値を入れておく(初回見えた時にキャリブレーションする予定)
-  x_init << 6.5, 1.0, 0.0, -8.0, -6.0, 3.0;
-  // 雑な値を入れておいたので増やしておく
-  Eigen::MatrixXd P_init(6, 6);
-  // clang-format off
-  P_init << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.8, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 3.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 100.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 2.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 20.0;
-  // clang-format on
-  Filter::EKF ekf{ x_init, P_init };
   // 放物線を描くボール
   // 重力は適当
   const Eigen::VectorXd GRAVITY((Eigen::VectorXd(3) << 0, 0, -9.80665).finished());
@@ -444,7 +430,7 @@ void simulate(const std::unique_ptr<Window>& window)
     }
     // }}} simulator calc end
     // {{{ user program start
-    // {{{ raw point
+    // {{{ getting raw ball point
     float pd[12] = {
       static_cast<float>(PL(0, 0)), static_cast<float>(PL(0, 1)), static_cast<float>(PL(0, 2)),
       static_cast<float>(PL(0, 3)), static_cast<float>(PL(1, 0)), static_cast<float>(PL(1, 1)),
@@ -522,22 +508,51 @@ void simulate(const std::unique_ptr<Window>& window)
     // 画素のばらつき
     Eigen::MatrixXd R = 10.0 * Eigen::MatrixXd::Identity(4, 4);
 
-    std::pair<Eigen::VectorXd, Eigen::MatrixXd> value = ekf.update(f, F, G, Q, u, z, h, dh, R);
-    if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] <= 1024.0 and
-        0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
+    static bool is_ekf_initialized = false;
+    Filter::EKF ekf{ Eigen::VectorXd(6), Eigen::MatrixXd(6, 6) };
+    if (not is_ekf_initialized)
     {
-      std::cout << "estimated: " << (value.first)[0] << " " << (value.first)[1] << " " << (value.first)[2] << " "
-                << (value.first)[3] << " " << (value.first)[4] << " " << (value.first)[5] << std::endl;
-      std::cout << "coeff: " << (value.second)(0, 0) << " " << (value.second)(1, 1) << " " << (value.second)(2, 2) << " "
-                << (value.second)(3, 3) << " " << (value.second)(4, 4) << " " << (value.second)(5, 5) << std::endl;
+      Eigen::VectorXd x_init(6);
+      // 雑な値を入れておく(位置は最初に見つけたところ，速度は45度射出時に原点に向かうところ)
+      // v0*t=distance, v0*t-g*t^2/2=-zより，v0=d*g^0.5/(2d+2z)^0.5 (g=-GRAVITY[2])
+      double distance = std::hypot(point_rot[0], point_rot[1]);
+      double v0 = distance * std::sqrt(-GRAVITY[2]) / std::sqrt(2 * (std::abs(distance + point_rot[2])));
+      x_init << point_rot[0], point_rot[1], point_rot[2],                    // 位置
+          -v0 * point_rot[0] / distance, -v0 * point_rot[1] / distance, v0;  // 速度
+      // 雑な値を入れておいたので増やしておく
+      Eigen::MatrixXd P_init(6, 6);
+      // clang-format off
+      P_init << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.5, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 2.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 10.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 10.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 30.0;
+      // clang-format on
+      is_ekf_initialized = true;
+      ekf.reset(x_init, P_init);
+      std::cout << "popopopopopopopopo" << std::endl;
+    }
 
-      window->setEstimatedBallState(
-          (value.first)[0],
-          (value.first)[1],
-          (value.first)[2],
-          (value.first)[3],
-          (value.first)[4],
-          (value.first)[5]);
+    if (is_ekf_initialized)
+    {
+      std::pair<Eigen::VectorXd, Eigen::MatrixXd> value = ekf.update(f, F, G, Q, u, z, h, dh, R);
+      if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] <= 1024.0 and
+          0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
+      {
+        std::cout << "estimated: " << (value.first)[0] << " " << (value.first)[1] << " " << (value.first)[2] << " "
+                  << (value.first)[3] << " " << (value.first)[4] << " " << (value.first)[5] << std::endl;
+        std::cout << "coeff: " << (value.second)(0, 0) << " " << (value.second)(1, 1) << " " << (value.second)(2, 2) << " "
+                  << (value.second)(3, 3) << " " << (value.second)(4, 4) << " " << (value.second)(5, 5) << std::endl;
+
+        window->setEstimatedBallState(
+            (value.first)[0],
+            (value.first)[1],
+            (value.first)[2],
+            (value.first)[3],
+            (value.first)[4],
+            (value.first)[5]);
+      }
     }
 
     // }}} user program end
