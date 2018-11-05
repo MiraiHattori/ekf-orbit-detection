@@ -531,7 +531,6 @@ void simulate(const std::unique_ptr<Window>& window)
       // clang-format on
       is_ekf_initialized = true;
       ekf.reset(x_init, P_init);
-      std::cout << "popopopopopopopopo" << std::endl;
     }
 
     if (is_ekf_initialized)
