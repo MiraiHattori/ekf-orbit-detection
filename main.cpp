@@ -379,6 +379,8 @@ void simulate(const std::unique_ptr<Window>& window)
   double sim_p = 0.9;                           // 0.0 <= p <= 1.0である必要がある
   double sim_q = std::sqrt(1 - sim_p * sim_p);  // p^2 + q^2 = 1
   double sim_t = 0.0;
+  bool is_ekf_initialized = false;
+  Filter::EKF ekf{ Eigen::VectorXd(6), Eigen::MatrixXd(6, 6) };
 
   while (true)
   {
@@ -508,8 +510,6 @@ void simulate(const std::unique_ptr<Window>& window)
     // 画素のばらつき
     Eigen::MatrixXd R = 10.0 * Eigen::MatrixXd::Identity(4, 4);
 
-    static bool is_ekf_initialized = false;
-    Filter::EKF ekf{ Eigen::VectorXd(6), Eigen::MatrixXd(6, 6) };
     if (not is_ekf_initialized)
     {
       Eigen::VectorXd x_init(6);
