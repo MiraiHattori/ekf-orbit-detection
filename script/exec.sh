@@ -5,7 +5,7 @@ if [ ! -f ./test/ekf_test ]; then
     exit -1
 fi
 
-./test/ekf_test > log
+./main > log
 cat log | grep pixel > pixel.log
 cat log | grep pos > pos.log
 cat log | grep measure > measure.log
