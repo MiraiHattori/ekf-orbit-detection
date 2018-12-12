@@ -456,7 +456,10 @@ void simulate(const std::unique_ptr<Window>& window)
     float resultd[4] = { 0.0, 0.0, 0.0, 0.0 };
     cv::Mat result(cv::Size(1, 4), CV_32F, resultd);
     cv::triangulatePoints(p, rp, xy, rxy, result);
+
+    // 光学座標系でのボール位置
     Eigen::VectorXd point_opt(3);
+    // リンク座標系でのボール位置
     Eigen::VectorXd point(3);
     Eigen::VectorXd point_rot(3);
     point_opt << result.at<float>(0, 0) / result.at<float>(3, 0), result.at<float>(1, 0) / result.at<float>(3, 0),
@@ -471,6 +474,13 @@ void simulate(const std::unique_ptr<Window>& window)
     }
     // }}}
 
+    // {{{ EKF
+    /*
+     * 状態: ボールの(x, y, z, vx, vy, vz)
+     * 撮影時刻の前回からのdiff(delta_t)
+     * カメラ位置(pos_camera)
+     * カメラ姿勢(q_camera)と画面上でのボール中心(lx, ly, rx, ry)のあるピクセルEKF
+     */
     // 状態xはカメラリンク座標系でのボールの位置と速度を6次元並べたもの
     Eigen::MatrixXd F = Eigen::MatrixXd::Identity(6, 6);
     F.block(0, 3, 3, 3) = delta_t * Eigen::MatrixXd::Identity(3, 3);
@@ -487,20 +497,20 @@ void simulate(const std::unique_ptr<Window>& window)
     std::function<Eigen::VectorXd(Eigen::VectorXd)> h = [PL, PR, q_camera_inv, pos_camera_inv](Eigen::VectorXd x) {
       Eigen::VectorXd z_(4);
       // x.segment(0, 3)でEigen::Vector3d型のボール位置が得られる
-      Eigen::VectorXd x_ = q_camera_inv * x.segment(0, 3) + pos_camera_inv;
-      double X = x_[0];
-      double Y = x_[1];
-      double Z = x_[2];
+      Eigen::VectorXd x_rot = q_camera_inv * x.segment(0, 3) + pos_camera_inv;
+      double X = x_rot[0];
+      double Y = x_rot[1];
+      double Z = x_rot[2];
       z_ << -PL(0, 0) * Y / X + PL(0, 2), -PL(1, 1) * Z / X + PL(1, 2), -PR(0, 0) * Y / X + PR(0, 2) + PR(0, 3) / X,
           -PR(1, 1) * Z / X + PR(1, 2);
       return z_;
     };
     std::function<Eigen::MatrixXd(Eigen::VectorXd)> dh = [PL, PR, q_camera_inv, pos_camera_inv](Eigen::VectorXd x_filtered_pre) {
-      // x_filtered_pre.segment(0, 3)でEigen::Vector3d型のボール位置が得られる
-      Eigen::VectorXd x_ = q_camera_inv * x_filtered_pre.segment(0, 3) + pos_camera_inv;
-      double X = x_[0];
-      double Y = x_[1];
-      double Z = x_[2];
+      // x_filtered_pre.segment(0, 3) extracts ball pos
+      Eigen::VectorXd x_rot = q_camera_inv * x_filtered_pre.segment(0, 3) + pos_camera_inv;
+      double X = x_rot[0];
+      double Y = x_rot[1];
+      double Z = x_rot[2];
       Eigen::MatrixXd H = Eigen::MatrixXd::Zero(4, 6);
       H(0, 0) = PL(0, 0) * Y / (X * X);
       H(0, 1) = -PL(0, 0) / X;
@@ -564,6 +574,7 @@ void simulate(const std::unique_ptr<Window>& window)
             (value.first)[5]);
       }
     }
+    // }}}
 
     // }}} user program end
     // {{{ simulator update start
