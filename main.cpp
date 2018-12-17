@@ -552,8 +552,17 @@ void simulate(const std::unique_ptr<Window>& window)
                   << (value.first)[1] + (value.first)[4] * ttc << " "
                   << (value.first)[2] + (value.first)[5] * ttc + GRAVITY[2] * ttc * ttc / 2.0 << " " << std::endl;
 
-        std::cout << "coeff: " << (value.second)(0, 0) << " " << (value.second)(1, 1) << " " << (value.second)(2, 2) << " "
-                  << (value.second)(3, 3) << " " << (value.second)(4, 4) << " " << (value.second)(5, 5) << std::endl;
+        /*
+        Eigen::MatrixXd p = (value.second);
+        std::cout << "coeff: "
+            << p(0, 0) << " " << p(0, 1) << " " << p(0, 2) << " " << p(0, 3) << " " << p(0, 4) << " " << p(0, 5) << " "
+            << p(1, 0) << " " << p(1, 1) << " " << p(1, 2) << " " << p(1, 3) << " " << p(1, 4) << " " << p(1, 5) << " "
+            << p(2, 0) << " " << p(2, 1) << " " << p(2, 2) << " " << p(2, 3) << " " << p(2, 4) << " " << p(2, 5) << " "
+            << p(3, 0) << " " << p(3, 1) << " " << p(3, 2) << " " << p(3, 3) << " " << p(3, 4) << " " << p(3, 5) << " "
+            << p(4, 0) << " " << p(4, 1) << " " << p(4, 2) << " " << p(4, 3) << " " << p(4, 4) << " " << p(4, 5) << " "
+            << p(5, 0) << " " << p(5, 1) << " " << p(5, 2) << " " << p(5, 3) << " " << p(5, 4) << " " << p(5, 5)
+            << std::endl;
+        */
 
         window->setEstimatedBallState(
             (value.first)[0],
