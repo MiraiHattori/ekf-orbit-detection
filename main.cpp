@@ -373,13 +373,12 @@ void simulate(const std::unique_ptr<Window>& window)
   PR << 891.959633, 0.000000, 556.986137, -204.560055, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
   // clang-format on
 
-  double sim_x0 = 5.0;
-  double sim_y0 = 0.0;
-  double sim_z0 = 0.0;
-  double sim_v_w = -5.9;
-  double sim_v_z = 5.9;
-  double sim_p = 0.97;                          // 0.0 <= p <= 1.0である必要がある
-  double sim_q = std::sqrt(1 - sim_p * sim_p);  // p^2 + q^2 = 1
+  double sim_x0 = 4.0;
+  double sim_y0 = 1.4;
+  double sim_z0 = 1.2;
+  double sim_v_x = -4.4;
+  double sim_v_y = -2.3;
+  double sim_v_z = 4.4;
   double sim_t = 0.0;
   bool is_ekf_initialized = false;
   Filter::EKF ekf{ Eigen::VectorXd(6), Eigen::MatrixXd(6, 6) };
@@ -398,11 +397,11 @@ void simulate(const std::unique_ptr<Window>& window)
     }
     else
     {
-      pos3d << sim_x0 + sim_p * sim_v_w * (sim_t - throw_start_t),
-          sim_y0 + sim_q * sim_v_w * (sim_t - throw_start_t),
+      pos3d << sim_x0 + sim_v_x * (sim_t - throw_start_t),
+          sim_y0 + sim_v_y * (sim_t - throw_start_t),
           sim_z0 + sim_v_z * (sim_t - throw_start_t) +
               GRAVITY[2] * (sim_t - throw_start_t) * (sim_t - throw_start_t) / 2.0;
-      vel3d << sim_p * sim_v_w, sim_q * sim_v_w, sim_v_z + GRAVITY[2] * (sim_t - throw_start_t);
+      vel3d << sim_v_x, sim_v_y, sim_v_z + GRAVITY[2] * (sim_t - throw_start_t);
     }
 
     std::cout << "sim_time_and_pos: " << sim_t << " " << pos3d[0] << " " << pos3d[1] << " " << pos3d[2] << " " << vel3d[0] << " " << vel3d[1] << " " << vel3d[2] << std::endl;
@@ -458,13 +457,17 @@ void simulate(const std::unique_ptr<Window>& window)
     float resultd[4] = { 0.0, 0.0, 0.0, 0.0 };
     cv::Mat result(cv::Size(1, 4), CV_32F, resultd);
     cv::triangulatePoints(p, rp, xy, rxy, result);
+
+    // 光学座標系でのボール位置
     Eigen::VectorXd point_opt(3);
+    // リンク座標系でのボール位置
     Eigen::VectorXd point(3);
     Eigen::VectorXd point_rot(3);
     point_opt << result.at<float>(0, 0) / result.at<float>(3, 0), result.at<float>(1, 0) / result.at<float>(3, 0),
         result.at<float>(2, 0) / result.at<float>(3, 0);
     point << point_opt[2], -point_opt[0], -point_opt[1];
     point_rot = q_camera * point + pos_camera;
+    std::cout << "opt: " << point_opt[0] << " " << point_opt[1] << " " << point_opt[2] << std::endl;
 
     if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] < 1280.0 and
         0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
@@ -473,6 +476,13 @@ void simulate(const std::unique_ptr<Window>& window)
     }
     // }}}
 
+    // {{{ EKF
+    /*
+     * 状態: ボールの(x, y, z, vx, vy, vz)
+     * 撮影時刻の前回からのdiff(delta_t)
+     * カメラ位置(pos_camera)
+     * カメラ姿勢(q_camera)と画面上でのボール中心(lx, ly, rx, ry)のあるピクセルEKF
+     */
     // 状態xはカメラリンク座標系でのボールの位置と速度を6次元並べたもの
     Eigen::MatrixXd F = Eigen::MatrixXd::Identity(6, 6);
     F.block(0, 3, 3, 3) = delta_t * Eigen::MatrixXd::Identity(3, 3);
@@ -489,20 +499,20 @@ void simulate(const std::unique_ptr<Window>& window)
     std::function<Eigen::VectorXd(Eigen::VectorXd)> h = [PL, PR, q_camera_inv, pos_camera_inv](Eigen::VectorXd x) {
       Eigen::VectorXd z_(4);
       // x.segment(0, 3)でEigen::Vector3d型のボール位置が得られる
-      Eigen::VectorXd x_ = q_camera_inv * x.segment(0, 3) + pos_camera_inv;
-      double X = x_[0];
-      double Y = x_[1];
-      double Z = x_[2];
+      Eigen::VectorXd x_rot = q_camera_inv * x.segment(0, 3) + pos_camera_inv;
+      double X = x_rot[0];
+      double Y = x_rot[1];
+      double Z = x_rot[2];
       z_ << -PL(0, 0) * Y / X + PL(0, 2), -PL(1, 1) * Z / X + PL(1, 2), -PR(0, 0) * Y / X + PR(0, 2) + PR(0, 3) / X,
           -PR(1, 1) * Z / X + PR(1, 2);
       return z_;
     };
     std::function<Eigen::MatrixXd(Eigen::VectorXd)> dh = [PL, PR, q_camera_inv, pos_camera_inv](Eigen::VectorXd x_filtered_pre) {
-      // x_filtered_pre.segment(0, 3)でEigen::Vector3d型のボール位置が得られる
-      Eigen::VectorXd x_ = q_camera_inv * x_filtered_pre.segment(0, 3) + pos_camera_inv;
-      double X = x_[0];
-      double Y = x_[1];
-      double Z = x_[2];
+      // x_filtered_pre.segment(0, 3) extracts ball pos
+      Eigen::VectorXd x_rot = q_camera_inv * x_filtered_pre.segment(0, 3) + pos_camera_inv;
+      double X = x_rot[0];
+      double Y = x_rot[1];
+      double Z = x_rot[2];
       Eigen::MatrixXd H = Eigen::MatrixXd::Zero(4, 6);
       H(0, 0) = PL(0, 0) * Y / (X * X);
       H(0, 1) = -PL(0, 0) / X;
@@ -560,17 +570,8 @@ void simulate(const std::unique_ptr<Window>& window)
                   << (value.first)[1] + (value.first)[4] * ttc << " "
                   << (value.first)[2] + (value.first)[5] * ttc + GRAVITY[2] * ttc * ttc / 2.0 << " " << std::endl;
 
-        Eigen::MatrixXd p = (value.second);
         std::cout << "coeff: " << std::endl;
-        std::cout << p << std::endl;
-        /*
-        std::cout << p(0, 0) << " " << p(0, 1) << " " << p(0, 2) << " " << p(0, 3) << " " << p(0, 4) << " " << p(0, 5) << " " << std::endl;
-        std::cout << p(1, 0) << " " << p(1, 1) << " " << p(1, 2) << " " << p(1, 3) << " " << p(1, 4) << " " << p(1, 5) << " " << std::endl;
-        std::cout << p(2, 0) << " " << p(2, 1) << " " << p(2, 2) << " " << p(2, 3) << " " << p(2, 4) << " " << p(2, 5) << " " << std::endl;
-        std::cout << p(3, 0) << " " << p(3, 1) << " " << p(3, 2) << " " << p(3, 3) << " " << p(3, 4) << " " << p(3, 5) << " " << std::endl;
-        std::cout << p(4, 0) << " " << p(4, 1) << " " << p(4, 2) << " " << p(4, 3) << " " << p(4, 4) << " " << p(4, 5) << " " << std::endl;
-        std::cout << p(5, 0) << " " << p(5, 1) << " " << p(5, 2) << " " << p(5, 3) << " " << p(5, 4) << " " << p(5, 5) << std::endl;
-        */
+        std::cout << value.second << std::endl;
 
         window->setEstimatedBallState(
             (value.first)[0],
@@ -581,6 +582,7 @@ void simulate(const std::unique_ptr<Window>& window)
             (value.first)[5]);
       }
     }
+    // }}}
 
     // }}} user program end
     // {{{ simulator update start

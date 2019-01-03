@@ -6,11 +6,10 @@ if [ ! -f ./test/ekf_test ]; then
 fi
 
 ./main > log
-cat m-hattori-log.log | grep pixel > pixel.log
-cat m-hattori-log.log | grep pos > pos.log
-cat m-hattori-log.log | grep measure > measure.log
-cat m-hattori-log.log | grep estimated > estimated.log
-
+cat log | grep pixel > pixel.log
+cat log | grep pos > pos.log
+cat log | grep measure > measure.log
+cat log | grep estimated > estimated.log
 gnuplot -e "
     set view equal xyz;
     splot \"measure.log\" using 2:3:4 with linespoints title \"measured point\",
