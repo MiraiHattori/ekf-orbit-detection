@@ -363,12 +363,14 @@ void simulate(const std::unique_ptr<Window>& window)
   Eigen::MatrixXd PL(3, 4);
   Eigen::MatrixXd PR(3, 4);
   // clang-format off
-  PL << 1710.009813,    0.000000, 717.047562,    0.000000,
-           0.000000, 1710.009813, 435.945057,    0.000000,
-           0.000000,    0.000000,   1.000000,    0.000000;
-  PR << 1710.009813,    0.000000, 717.047562, -157.965126,
-           0.000000, 1710.009813, 435.945057,    0.000000,
-           0.000000,    0.000000,   1.000000,    0.000000;
+  //  PL << 1710.009813,    0.000000, 717.047562,    0.000000,
+  //           0.000000, 1710.009813, 435.945057,    0.000000,
+  //           0.000000,    0.000000,   1.000000,    0.000000;
+  //  PR << 1710.009813,    0.000000, 717.047562, -157.965126,
+  //           0.000000, 1710.009813, 435.945057,    0.000000,
+  //           0.000000,    0.000000,   1.000000,    0.000000;
+  PL << 891.959633, 0.000000, 556.986137, 0.000000, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
+  PR << 891.959633, 0.000000, 556.986137, -204.560055, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
   // clang-format on
 
   double sim_x0 = 5.0;
@@ -478,7 +480,7 @@ void simulate(const std::unique_ptr<Window>& window)
     std::function<Eigen::VectorXd(Eigen::VectorXd)> f = [F](Eigen::VectorXd x) { return F * x; };
     Eigen::MatrixXd G = Eigen::MatrixXd::Identity(6, 6);
     // 誤差を入れた(入れないと正定値性失う可能性)
-    Eigen::MatrixXd Q = 0.01 * Eigen::MatrixXd::Identity(6, 6);
+    Eigen::MatrixXd Q = 0.00001 * Eigen::MatrixXd::Identity(6, 6);
     Eigen::VectorXd u(6);
     u.segment(0, 3) = GRAVITY * delta_t * delta_t / 2.0;
     u.segment(3, 3) = GRAVITY * delta_t;
@@ -513,7 +515,7 @@ void simulate(const std::unique_ptr<Window>& window)
       return H;
     };
     // 画素のばらつき
-    Eigen::MatrixXd R = 1.0 * Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd R = 4.0 * Eigen::MatrixXd::Identity(4, 4);
 
     if (not is_ekf_initialized)
     {
@@ -526,13 +528,19 @@ void simulate(const std::unique_ptr<Window>& window)
           -v0 * point_rot[0] / distance, -v0 * point_rot[1] / distance, v0;  // 速度
       // 雑な値を入れておいたので増やしておく
       Eigen::MatrixXd P_init(6, 6);
+      double x = 2.0;
+      double y = 2.0;
+      double z = 3.0;
+      double vx = 3.0;
+      double vy = 5.0;
+      double vz = 10.0;
       // clang-format off
-      P_init << 0.2, 0.0, 0.0, 100.0, 0.0, 0.0,
-                0.0, 0.2, 0.0, 0.0, 100.0, 0.0,
-                0.0, 0.0, 0.2, 0.0, 0.0, 100.0,
-                100.0, 0.0, 0.0, 5.0, 0.0, 0.0,
-                0.0, 100.0, 0.0, 0.0, 3.0, 0.0,
-                0.0, 0.0, 100.0, 0.0, 0.0, 5.0;
+      P_init << x, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, y, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, z, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, vx, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, vy, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, vz;
       // clang-format on
       is_ekf_initialized = true;
       ekf.reset(x_init, P_init);
@@ -552,16 +560,16 @@ void simulate(const std::unique_ptr<Window>& window)
                   << (value.first)[1] + (value.first)[4] * ttc << " "
                   << (value.first)[2] + (value.first)[5] * ttc + GRAVITY[2] * ttc * ttc / 2.0 << " " << std::endl;
 
-        /*
         Eigen::MatrixXd p = (value.second);
-        std::cout << "coeff: "
-            << p(0, 0) << " " << p(0, 1) << " " << p(0, 2) << " " << p(0, 3) << " " << p(0, 4) << " " << p(0, 5) << " "
-            << p(1, 0) << " " << p(1, 1) << " " << p(1, 2) << " " << p(1, 3) << " " << p(1, 4) << " " << p(1, 5) << " "
-            << p(2, 0) << " " << p(2, 1) << " " << p(2, 2) << " " << p(2, 3) << " " << p(2, 4) << " " << p(2, 5) << " "
-            << p(3, 0) << " " << p(3, 1) << " " << p(3, 2) << " " << p(3, 3) << " " << p(3, 4) << " " << p(3, 5) << " "
-            << p(4, 0) << " " << p(4, 1) << " " << p(4, 2) << " " << p(4, 3) << " " << p(4, 4) << " " << p(4, 5) << " "
-            << p(5, 0) << " " << p(5, 1) << " " << p(5, 2) << " " << p(5, 3) << " " << p(5, 4) << " " << p(5, 5)
-            << std::endl;
+        std::cout << "coeff: " << std::endl;
+        std::cout << p << std::endl;
+        /*
+        std::cout << p(0, 0) << " " << p(0, 1) << " " << p(0, 2) << " " << p(0, 3) << " " << p(0, 4) << " " << p(0, 5) << " " << std::endl;
+        std::cout << p(1, 0) << " " << p(1, 1) << " " << p(1, 2) << " " << p(1, 3) << " " << p(1, 4) << " " << p(1, 5) << " " << std::endl;
+        std::cout << p(2, 0) << " " << p(2, 1) << " " << p(2, 2) << " " << p(2, 3) << " " << p(2, 4) << " " << p(2, 5) << " " << std::endl;
+        std::cout << p(3, 0) << " " << p(3, 1) << " " << p(3, 2) << " " << p(3, 3) << " " << p(3, 4) << " " << p(3, 5) << " " << std::endl;
+        std::cout << p(4, 0) << " " << p(4, 1) << " " << p(4, 2) << " " << p(4, 3) << " " << p(4, 4) << " " << p(4, 5) << " " << std::endl;
+        std::cout << p(5, 0) << " " << p(5, 1) << " " << p(5, 2) << " " << p(5, 3) << " " << p(5, 4) << " " << p(5, 5) << std::endl;
         */
 
         window->setEstimatedBallState(
