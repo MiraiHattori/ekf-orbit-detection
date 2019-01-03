@@ -466,6 +466,7 @@ void simulate(const std::unique_ptr<Window>& window)
         result.at<float>(2, 0) / result.at<float>(3, 0);
     point << point_opt[2], -point_opt[0], -point_opt[1];
     point_rot = q_camera * point + pos_camera;
+    std::cout << "opt: " << point_opt[0] << " " << point_opt[1] << " " << point_opt[2] << std::endl;
 
     if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] < 1280.0 and
         0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
@@ -562,8 +563,8 @@ void simulate(const std::unique_ptr<Window>& window)
                   << (value.first)[1] + (value.first)[4] * ttc << " "
                   << (value.first)[2] + (value.first)[5] * ttc + GRAVITY[2] * ttc * ttc / 2.0 << " " << std::endl;
 
-        std::cout << "coeff: " << (value.second)(0, 0) << " " << (value.second)(1, 1) << " " << (value.second)(2, 2) << " "
-                  << (value.second)(3, 3) << " " << (value.second)(4, 4) << " " << (value.second)(5, 5) << std::endl;
+        std::cout << "coeff: " << std::endl;
+        std::cout << value.second << std::endl;
 
         window->setEstimatedBallState(
             (value.first)[0],
