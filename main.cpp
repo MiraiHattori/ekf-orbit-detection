@@ -363,21 +363,16 @@ void simulate(const std::unique_ptr<Window>& window)
   Eigen::MatrixXd PL(3, 4);
   Eigen::MatrixXd PR(3, 4);
   // clang-format off
-  PL << 1710.009813,    0.000000, 717.047562,    0.000000,
-           0.000000, 1710.009813, 435.945057,    0.000000,
-           0.000000,    0.000000,   1.000000,    0.000000;
-  PR << 1710.009813,    0.000000, 717.047562, -157.965126,
-           0.000000, 1710.009813, 435.945057,    0.000000,
-           0.000000,    0.000000,   1.000000,    0.000000;
+  PL << 891.959633, 0.000000, 556.986137, 0.000000, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
+  PR << 891.959633, 0.000000, 556.986137, -204.560055, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
   // clang-format on
 
-  double sim_x0 = 5.0;
-  double sim_y0 = 0.0;
-  double sim_z0 = 0.0;
-  double sim_v_w = -5.9;
-  double sim_v_z = 5.9;
-  double sim_p = 0.97;                          // 0.0 <= p <= 1.0である必要がある
-  double sim_q = std::sqrt(1 - sim_p * sim_p);  // p^2 + q^2 = 1
+  double sim_x0 = 4.0;
+  double sim_y0 = 1.4;
+  double sim_z0 = 1.2;
+  double sim_v_x = -4.4;
+  double sim_v_y = -2.3;
+  double sim_v_z = 4.4;
   double sim_t = 0.0;
   bool is_ekf_initialized = false;
   Filter::EKF ekf{ Eigen::VectorXd(6), Eigen::MatrixXd(6, 6) };
@@ -396,11 +391,11 @@ void simulate(const std::unique_ptr<Window>& window)
     }
     else
     {
-      pos3d << sim_x0 + sim_p * sim_v_w * (sim_t - throw_start_t),
-          sim_y0 + sim_q * sim_v_w * (sim_t - throw_start_t),
+      pos3d << sim_x0 + sim_v_x * (sim_t - throw_start_t),
+          sim_y0 + sim_v_y * (sim_t - throw_start_t),
           sim_z0 + sim_v_z * (sim_t - throw_start_t) +
               GRAVITY[2] * (sim_t - throw_start_t) * (sim_t - throw_start_t) / 2.0;
-      vel3d << sim_p * sim_v_w, sim_q * sim_v_w, sim_v_z + GRAVITY[2] * (sim_t - throw_start_t);
+      vel3d << sim_v_x, sim_v_y, sim_v_z + GRAVITY[2] * (sim_t - throw_start_t);
     }
 
     std::cout << "sim_time_and_pos: " << sim_t << " " << pos3d[0] << " " << pos3d[1] << " " << pos3d[2] << " " << vel3d[0] << " " << vel3d[1] << " " << vel3d[2] << std::endl;
@@ -538,12 +533,12 @@ void simulate(const std::unique_ptr<Window>& window)
       // 雑な値を入れておいたので増やしておく
       Eigen::MatrixXd P_init(6, 6);
       // clang-format off
-      P_init << 0.2, 0.0, 0.0, 100.0, 0.0, 0.0,
-                0.0, 0.2, 0.0, 0.0, 100.0, 0.0,
-                0.0, 0.0, 0.2, 0.0, 0.0, 100.0,
-                100.0, 0.0, 0.0, 5.0, 0.0, 0.0,
-                0.0, 100.0, 0.0, 0.0, 3.0, 0.0,
-                0.0, 0.0, 100.0, 0.0, 0.0, 5.0;
+      P_init << 10.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 10.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 10.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 5.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 3.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 5.0;
       // clang-format on
       is_ekf_initialized = true;
       ekf.reset(x_init, P_init);
