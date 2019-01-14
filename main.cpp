@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 #include <Eigen/Geometry>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -52,8 +53,8 @@ public:
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
     gluLookAt(
-        7000.0, 0.0, 300.0,
-        6000.0, 0.0, 200.0,
+        7000.0, 0.0, 1000.0,
+        0.0, 0.0, 200.0,
         0.0, 0.0, 1.0);
     /*
     // 横視点
@@ -369,8 +370,10 @@ void simulate(const std::unique_ptr<Window>& window)
   //  PR << 1710.009813,    0.000000, 717.047562, -157.965126,
   //           0.000000, 1710.009813, 435.945057,    0.000000,
   //           0.000000,    0.000000,   1.000000,    0.000000;
-  PL << 891.959633, 0.000000, 556.986137, 0.000000, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
-  PR << 891.959633, 0.000000, 556.986137, -204.560055, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
+  // PL << 891.959633, 0.000000, 556.986137, 0.000000, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
+  // PR << 891.959633, 0.000000, 556.986137, -204.560055, 0.000000, 891.959633, 519.328228, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
+  PL << 880.808505, 0.000000, 618.013809, 0.000000, 0.000000, 880.808505, 516.929707, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
+  PR << 880.808505, 0.000000, 618.013809, -203.457281, 0.000000, 880.808505, 516.929707, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000;
   // clang-format on
 
   double sim_x0 = 4.0;
@@ -385,6 +388,7 @@ void simulate(const std::unique_ptr<Window>& window)
 
   while (true)
   {
+    std::chrono::system_clock::time_point s = std::chrono::system_clock::now();
     // {{{ simulator calc start
     Eigen::VectorXd pos3d(3);
     Eigen::VectorXd vel3d(3);
@@ -408,10 +412,10 @@ void simulate(const std::unique_ptr<Window>& window)
     window->setRealBallState(pos3d[0], pos3d[1], pos3d[2], vel3d[0], vel3d[1], vel3d[2]);
 
     // mechanical parameter
-    Eigen::Vector3d pos_camera(0.0, 0.0, 1.8);
+    Eigen::Vector3d pos_camera(0.0824143, -0.0461265, 1.51731);
     Eigen::Vector3d pos_camera_inv = -pos_camera;
     // TODO use tf2::Quaternion
-    Eigen::Quaterniond q_camera(0.9909013, 0.0, 0.1345903, 0.0);  // w, x, y, z
+    Eigen::Quaterniond q_camera(0.985996, 0.0988545, 0.0612321, 0.119544);  // w, x, y, z
     Eigen::Quaterniond q_camera_inv = q_camera.inverse();
 
     Eigen::Vector3d q_pos(pos3d[0], pos3d[1], pos3d[2]);                // カメラの姿勢を考慮していないxyz座標, 絶対座標系
@@ -422,12 +426,12 @@ void simulate(const std::unique_ptr<Window>& window)
     Eigen::VectorXd tmp_l = PL * homo_pos4d;
     // 左右ステレオカメラ上のボールの画像重心ピクセル値
     Eigen::VectorXd pixel_l(2);
-    pixel_l << tmp_l[0] / tmp_l[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
+    pixel_l << tmp_l[0] / tmp_l[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
         tmp_l[1] / tmp_l[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
     Eigen::VectorXd tmp_r = PR * homo_pos4d;
     Eigen::VectorXd pixel_r(2);
-    pixel_r << tmp_r[0] / tmp_r[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
-        tmp_r[1] / tmp_r[2] + Math::normalRand(0.0, 1.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
+    pixel_r << tmp_r[0] / tmp_r[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0),
+        tmp_r[1] / tmp_r[2] + Math::normalRand(0.0, 0.0) + Math::impulsiveNoise(0.0, 0.0, 0.0);
     if (0.0 <= pixel_l[0] and pixel_l[0] <= 1280.0 and 0.0 <= pixel_l[1] and pixel_l[1] < 1280.0 and
         0.0 <= pixel_r[0] and pixel_r[0] <= 1280.0 and 0.0 <= pixel_r[1] and pixel_r[1] <= 1024.0)
     {
@@ -490,7 +494,7 @@ void simulate(const std::unique_ptr<Window>& window)
     std::function<Eigen::VectorXd(Eigen::VectorXd)> f = [F](Eigen::VectorXd x) { return F * x; };
     Eigen::MatrixXd G = Eigen::MatrixXd::Identity(6, 6);
     // 誤差を入れた(入れないと正定値性失う可能性)
-    Eigen::MatrixXd Q = 0.00001 * Eigen::MatrixXd::Identity(6, 6);
+    Eigen::MatrixXd Q = 0.0001 * Eigen::MatrixXd::Identity(6, 6);
     Eigen::VectorXd u(6);
     u.segment(0, 3) = GRAVITY * delta_t * delta_t / 2.0;
     u.segment(3, 3) = GRAVITY * delta_t;
@@ -525,7 +529,7 @@ void simulate(const std::unique_ptr<Window>& window)
       return H;
     };
     // 画素のばらつき
-    Eigen::MatrixXd R = 4.0 * Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd R = 2.0 * Eigen::MatrixXd::Identity(4, 4);
 
     if (not is_ekf_initialized)
     {
@@ -538,12 +542,12 @@ void simulate(const std::unique_ptr<Window>& window)
           -v0 * point_rot[0] / distance, -v0 * point_rot[1] / distance, v0;  // 速度
       // 雑な値を入れておいたので増やしておく
       Eigen::MatrixXd P_init(6, 6);
-      double x = 2.0;
-      double y = 2.0;
-      double z = 3.0;
-      double vx = 3.0;
-      double vy = 5.0;
-      double vz = 10.0;
+      double x = 1.0;
+      double y = 1.0;
+      double z = 1.0;
+      double vx = 1.0;
+      double vy = 1.0;
+      double vz = 1.0;
       // clang-format off
       P_init << x, 0.0, 0.0, 0.0, 0.0, 0.0,
                 0.0, y, 0.0, 0.0, 0.0, 0.0,
@@ -590,7 +594,12 @@ void simulate(const std::unique_ptr<Window>& window)
     {
       break;
     }
+    std::chrono::system_clock::time_point e = std::chrono::system_clock::now();
+    auto count = std::chrono::duration_cast<std::chrono::microseconds>(e - s).count();
     usleep(100000);
+    if (count < delta_t * 1000000) {
+        usleep(static_cast<unsigned int>(delta_t * 1000000 - static_cast<double>(count)));
+    }
     sim_t += delta_t;
     // }}} simulator update end
   }
