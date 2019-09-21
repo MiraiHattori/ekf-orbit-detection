@@ -5,13 +5,18 @@ if [ ! -f ./test/ekf_test ]; then
     exit -1
 fi
 
-./main > log
+./main > log 2>errlog
 cat log | grep pixel > pixel.log
 cat log | grep pos > pos.log
 cat log | grep measure > measure.log
 cat log | grep estimated > estimated.log
+cat errlog | grep est_xzero > est_xzero.log
+cat errlog | grep real_xzero > real_xzero.log
 gnuplot -e "
     set view equal xyz;
+    set xlabel \"x\";
+    set ylabel \"y\";
+    set zlabel \"z\";
     splot \"measure.log\" using 2:3:4 with linespoints title \"measured point\",
           \"pos.log\" using 3:4:5 title \"real point\",
           \"estimated.log\" using 2:3:4 with linespoints title \"estimated point\",

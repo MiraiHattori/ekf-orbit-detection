@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
+make_test(cv_triangulate)
 make_test(ekf)
+make_test(parse)
 make_test(random)
 make_test(simulator)
-make_test(test)
 make_test(window)
