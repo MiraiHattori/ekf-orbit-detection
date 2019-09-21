@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <limits>
 
 #include <Eigen/Geometry>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -405,9 +406,9 @@ double Window::m_ball_vz = 0.0;
 double Window::m_ball_est_x = 0.0;
 double Window::m_ball_est_y = 0.0;
 double Window::m_ball_est_z = 0.0;
-double Window::m_ball_est_vx = 0.0;
-double Window::m_ball_est_vy = 0.0;
-double Window::m_ball_est_vz = 0.0;
+double Window::m_ball_est_vx = std::numeric_limits<double>::epsilon();
+double Window::m_ball_est_vy = std::numeric_limits<double>::epsilon();
+double Window::m_ball_est_vz = std::numeric_limits<double>::epsilon();
 double Window::m_ball_mea_x = 0.0;
 double Window::m_ball_mea_y = 0.0;
 double Window::m_ball_mea_z = 0.0;
